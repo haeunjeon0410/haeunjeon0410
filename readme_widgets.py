@@ -18,8 +18,8 @@ from badges import BADGES
 
 # ── 대사창 문구 (자유롭게 수정) ──────────────────────────────
 DIALOG = [
-    "Haeun Jeon",
-    "Sookmyung Women's University · Computer Science, Division of Software",
+    "Hi, I'm Haeun Jeon 👋",
+    "Computer Science @ Sookmyung Women's University",
 ]
 
 # ── 파티: 기술 -> (진화 라인 아이콘 번호들, 이 기술로 세는 GitHub 언어들) ──
@@ -78,6 +78,8 @@ def text_width(s, size):
     for ch in s:
         if "가" <= ch <= "힣":
             w += size * 1.0
+        elif ord(ch) > 0x1F000:                 # 이모지
+            w += size * 1.25
         elif ch == " ":
             w += size * 0.35
         else:
