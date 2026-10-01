@@ -91,14 +91,10 @@ def build_svg(cells, total, user):
     defs, light_css, dark_css = [], [], []
     for kind, (brows, bpal) in BALLS.items():
         defs.append(f'<symbol id="ball-{kind}" viewBox="0 0 13 13">{pixel_rects(brows, bpal)}</symbol>')
+    # 칸 하나 = 둥근 사각형 하나 (원본 잔디와 같은 모양, 렉 방지를 위해 질감 없음)
     for lv in range(5):
-        rects = "".join(f'<rect x="{x}" y="{y}" width="1" height="1" class="c{lv}{ch}"/>'
-                        for y, row in enumerate(NOISE) for x, ch in enumerate(row))
-        defs.append(f'<symbol id="g{lv}" viewBox="0 0 8 8">{rects}'
-                    f'<rect width="8" height="8" fill="none" stroke="#1b1f23" stroke-opacity=".08" stroke-width=".3"/></symbol>')
-        for k in range(3):
-            light_css.append(f".c{lv}{k}{{fill:{LIGHT[lv][k]}}}")
-            dark_css.append(f".c{lv}{k}{{fill:{DARK[lv][k]}}}")
+        light_css.append(f".L{lv}{{fill:{LIGHT[lv][0]}}}")
+        dark_css.append(f".L{lv}{{fill:{DARK[lv][0]}}}")
 
     # 경로: (0,3)에서 출발 -> 조우 칸들 -> 오른쪽 끝
     enc = pick_encounters(cells)
@@ -137,7 +133,7 @@ def build_svg(cells, total, user):
     grid = []
     for (c, r), lv in sorted(cells.items()):
         x, y = MARGIN + c * CELL, TOP + r * CELL
-        use = f'<use href="#g{lv}" x="{x}" y="{y}" width="{BLOCK}" height="{BLOCK}"/>'
+        use = f'<rect x="{x}" y="{y}" width="{BLOCK}" height="{BLOCK}" rx="2" class="L{lv}"/>'
         if (c, r) in rustles:
             t0 = rustles[(c, r)]
             dur = RUSTLE if (c, r) in mon_of else 0.3
@@ -251,7 +247,7 @@ def build_svg(cells, total, user):
     ly = TOP + 7 * CELL + 8
     lx = width - MARGIN - 5 * 15 - 30
     legend = [f'<text x="{lx - 6}" y="{ly + 10}" text-anchor="end" class="t">Less</text>']
-    legend += [f'<use href="#g{i}" x="{lx + i*15}" y="{ly}" width="{BLOCK}" height="{BLOCK}"/>' for i in range(5)]
+    legend += [f'<rect x="{lx + i*15}" y="{ly}" width="{BLOCK}" height="{BLOCK}" rx="2" class="L{i}"/>' for i in range(5)]
     legend.append(f'<text x="{lx + 5*15 + 2}" y="{ly + 10}" class="t">More</text>')
     label = f"{user}" + (f" · {total} contributions" if total else "")
     legend.append(f'<text x="{MARGIN}" y="{ly + 10}" class="t">{label}</text>')
@@ -259,6 +255,7 @@ def build_svg(cells, total, user):
     style = f"""
 {''.join(light_css)}
 @media (prefers-color-scheme:dark){{{''.join(dark_css)}}}
+.L0,.L1,.L2,.L3,.L4{{shape-rendering:geometricPrecision}}
 .t{{font:600 11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#8b949e}}
 .dl{{font:700 12px 'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;fill:#222222}}
 .tpath{{animation:tpath {T:.2f}s linear infinite}}
