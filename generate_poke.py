@@ -3,7 +3,11 @@
 격자/색/이동 유틸은 generate_grid.py 재사용.
 usage: python generate_poke.py <github_user> [output.svg]
 """
+import base64
+import io
 import sys
+
+from PIL import Image
 
 from poke_icons import EMOLGA_PNG, ICONS
 
@@ -54,6 +58,24 @@ def outlined(rows, pal, scale):
     return edge + pixel_rects(rows, pal, scale)
 
 
+def sprite(rows, pal, scale, cls=""):
+    """도트 행 -> 4배 키운 PNG 한 장 (<image>). 도트 느낌 유지 + 그릴 요소 1개."""
+    h, w, k = len(rows), len(rows[0]), 4
+    im = Image.new("RGBA", (w * k, h * k), (0, 0, 0, 0))
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                c = pal[ch]
+                im.paste(tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) + (255,),
+                         (x * k, y * k, x * k + k, y * k + k))
+    buf = io.BytesIO()
+    im.save(buf, "PNG", optimize=True)
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    c = f' class="{cls}"' if cls else ""
+    return (f'<image{c} href="data:image/png;base64,{b64}" width="{w * scale:g}" height="{h * scale:g}" '
+            f'style="image-rendering:pixelated"/>')
+
+
 def pick_encounters(cells):
     """상하좌우로 붙은 진한 칸 덩어리 = 풀숲 하나 = 포켓몬 한 마리.
     많으면 큰 풀숲부터 MAX_MONS개. 각 풀숲에서 처음 닿는(가장 왼쪽) 칸에서 조우."""
@@ -90,7 +112,7 @@ def build_svg(cells, total, user):
     # 풀숲 칸 심볼 (원본 색, 라이트/다크)
     defs, light_css, dark_css = [], [], []
     for kind, (brows, bpal) in BALLS.items():
-        defs.append(f'<symbol id="ball-{kind}" viewBox="0 0 13 13">{pixel_rects(brows, bpal)}</symbol>')
+        defs.append(f'<symbol id="ball-{kind}" viewBox="0 0 13 13">{sprite(brows, bpal, 1)}</symbol>')
     # 칸 하나 = 둥근 사각형 하나 (원본 잔디와 같은 모양, 렉 방지를 위해 질감 없음)
     for lv in range(5):
         light_css.append(f".L{lv}{{fill:{LIGHT[lv][0]}}}")
@@ -129,27 +151,27 @@ def build_svg(cells, total, user):
     t_end = t
     T = t_end + 1.6
 
-    # 풀숲 칸: 부스럭(흔들림 + 잎사귀)
+    # 잔디 칸: 질감 없이 원본 색. 지우가 밟는 진한 칸만 부스럭(흔들림 + 잎사귀)
     grid = []
     for (c, r), lv in sorted(cells.items()):
         x, y = MARGIN + c * CELL, TOP + r * CELL
         use = f'<rect x="{x}" y="{y}" width="{BLOCK}" height="{BLOCK}" rx="2" class="L{lv}"/>'
-        if (c, r) in rustles:
-            t0 = rustles[(c, r)]
-            dur = RUSTLE if (c, r) in mon_of else 0.3
-            n = f"r{c}_{r}"
-            kf, tt, sgn = [f"0%,{pct(t0, T)}{{transform:translateX(0)}}"], t0, 1
-            while tt < t0 + dur:
-                tt += 0.05
-                kf.append(f"{pct(tt, T)}{{transform:translateX({sgn * 1.5}px)}}")
-                sgn = -sgn
-            kf.append(f"{pct(t0 + dur + 0.01, T)},100%{{transform:translateX(0)}}")
-            css.append(f"@keyframes {n}{{{''.join(kf)}}}.{n}{{animation:{n} {T:.2f}s infinite steps(1)}}")
-            grid.append(f'<g class="{n}">{use}</g>')
-            cx, cy = center(c, r)
-            fx.append(puff(css, cx, cy - 4, t0, T, f"lf{c}_{r}", ["#2fb746", "#86dc95", "#195a2e"], n=5, spread=9))
-        else:
+        if (c, r) not in rustles:
             grid.append(use)
+            continue
+        t0 = rustles[(c, r)]
+        dur = RUSTLE if (c, r) in mon_of else 0.3
+        n = f"r{c}_{r}"
+        kf, tt, sgn = [f"0%,{pct(t0, T)}{{transform:translateX(0)}}"], t0, 1
+        while tt < t0 + dur:
+            tt += 0.05
+            kf.append(f"{pct(tt, T)}{{transform:translateX({sgn * 1.5}px)}}")
+            sgn = -sgn
+        kf.append(f"{pct(t0 + dur + 0.01, T)},100%{{transform:translateX(0)}}")
+        css.append(f"@keyframes {n}{{{''.join(kf)}}}.{n}{{animation:{n} {T:.2f}s infinite steps(1)}}")
+        grid.append(f'<g class="{n}">{use}</g>')
+        cx, cy = center(c, r)
+        fx.append(puff(css, cx, cy - 4, t0, T, f"lf{c}_{r}", ["#2fb746", "#86dc95", "#195a2e"], n=5, spread=9))
 
     # 조우 연출
     counter_x, counter_y = width - MARGIN - 40, 12
@@ -179,7 +201,7 @@ def build_svg(cells, total, user):
         bx, by = round(tx), round(ty)           # 말풍선과 "!"를 같은 기준점에서 배치 (가운데 정렬)
         # 픽셀 말풍선: 둥근 모서리 + 지우 머리를 가리키는 꼬리, 느낌표는 정가운데
         fx.append(f'<g class="{n}" transform="translate({bx - 5} {by - 28})">'
-                  f'{pixel_rects(BUBBLE, BUBBLE_PAL)}</g>')
+                  f'{sprite(BUBBLE, BUBBLE_PAL, 1)}</g>')
         # 몬스터: 풀숲에서 쏙 -> 볼에 빨려 들어감
         n = f"mon{k}"
         css.append(f"@keyframes {n}{{0%,{pct(t_ap, T)}{{opacity:0;transform:translateY(8px) scale(.6)}}"
@@ -191,7 +213,7 @@ def build_svg(cells, total, user):
         flip = f' transform="translate({mw:.1f} 0) scale(-1 1)"' if side == -1 and name != FINAL else ""
         fx.append(f'<g transform="translate({mx - mw/2:.1f} {my - mh + 5:.1f})"><g class="{n}"><g{flip}>'
                   + (f'<image href="data:image/png;base64,{EMOLGA_PNG[0]}" width="{mw:.1f}" height="{mh:.1f}"/>'
-                     if name == FINAL else pixel_rects(rows, pal, sc))
+                     if name == FINAL else sprite(rows, pal, sc))
                   + '</g></g></g>')
         # 볼: 던짐(포물선) -> 흔들흔들 -> 카운터로
         n = f"bl{k}"
@@ -238,9 +260,9 @@ def build_svg(cells, total, user):
     fx.append(puff(css, sx, sy, SPAWN, T, "sp", ["#ffffff", "#fff3a0", "#cfe8ff"]))
     trainer = (
         f'<g class="tpath"><g class="tspawn"><g class="tjump"><g class="tface">'
-        f'<g class="legA" transform="translate(0 {16*TS})">{pixel_rects(LEGS_A, TRAINER_PAL, TS)}</g>'
-        f'<g class="legB" transform="translate(0 {16*TS})">{pixel_rects(LEGS_B, TRAINER_PAL, TS)}</g>'
-        f'{pixel_rects(TRAINER, TRAINER_PAL, TS)}'
+        f'<g class="legA" transform="translate(0 {16*TS})">{sprite(LEGS_A, TRAINER_PAL, TS)}</g>'
+        f'<g class="legB" transform="translate(0 {16*TS})">{sprite(LEGS_B, TRAINER_PAL, TS)}</g>'
+        f'{sprite(TRAINER, TRAINER_PAL, TS)}'
         f'</g></g></g></g>'
     )
 

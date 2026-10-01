@@ -21,6 +21,8 @@ jobs:
         with:
           python-version: "3.12"
 
+      - run: pip install pillow
+
       - name: Generate SVG
         run: |
           mkdir -p dist
