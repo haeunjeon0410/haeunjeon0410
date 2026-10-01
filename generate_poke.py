@@ -177,9 +177,11 @@ def build_svg(cells, total, user):
         css.append(f"@keyframes {n}{{0%,{pct(t_ex, T)}{{opacity:0}}{pct(t_ex + 0.01, T)},{pct(t_ap + 0.3, T)}{{opacity:1}}"
                    f"{pct(t_ap + 0.31, T)},100%{{opacity:0}}}}.{n}{{opacity:0;animation:{n} {T:.2f}s infinite steps(1)}}")
         bx, by = round(tx), round(ty)           # 말풍선과 "!"를 같은 기준점에서 배치 (가운데 정렬)
-        fx.append(f'<g class="{n}"><rect x="{bx - 4}" y="{by - 31}" width="8" height="10" fill="#ffffff" stroke="#222" stroke-width="1"/>'
-                  f'<rect x="{bx - 1}" y="{by - 29}" width="2" height="4" fill="#e3342f"/>'
-                  f'<rect x="{bx - 1}" y="{by - 24}" width="2" height="2" fill="#e3342f"/></g>')
+        # 테두리는 선 대신 픽셀 칸으로 (반 픽셀 겹침 없음). 안쪽 8x11, 느낌표 위아래 여백 2px
+        fx.append(f'<g class="{n}"><rect x="{bx - 5}" y="{by - 33}" width="10" height="13" fill="#222222"/>'
+                  f'<rect x="{bx - 4}" y="{by - 32}" width="8" height="11" fill="#ffffff"/>'
+                  f'<rect x="{bx - 1}" y="{by - 30}" width="2" height="4" fill="#e3342f"/>'
+                  f'<rect x="{bx - 1}" y="{by - 25}" width="2" height="2" fill="#e3342f"/></g>')
         # 몬스터: 풀숲에서 쏙 -> 볼에 빨려 들어감
         n = f"mon{k}"
         css.append(f"@keyframes {n}{{0%,{pct(t_ap, T)}{{opacity:0;transform:translateY(8px) scale(.6)}}"
