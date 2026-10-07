@@ -48,6 +48,7 @@ THROW = 0.4
 WOBBLE = 0.7
 CAUGHT = 0.5
 MAX_MONS = 6
+MIN_MONS = 4         # 풀숲이 이보다 적으면 한 단계 옅은 칸까지 풀숲으로 침
 
 
 def outlined(rows, pal, scale):
@@ -76,11 +77,8 @@ def sprite(rows, pal, scale, cls=""):
             f'style="image-rendering:pixelated"/>')
 
 
-def pick_encounters(cells):
-    """상하좌우로 붙은 진한 칸 덩어리 = 풀숲 하나 = 포켓몬 한 마리.
-    많으면 큰 풀숲부터 MAX_MONS개. 각 풀숲에서 처음 닿는(가장 왼쪽) 칸에서 조우."""
-    lv_deep = 4 if any(v == 4 for v in cells.values()) else 3
-    deep = {cr for cr, v in cells.items() if v == lv_deep}
+def find_clusters(deep):
+    """상하좌우로 붙은 칸끼리 묶기."""
     seen, clusters = set(), []
     for start in sorted(deep):
         if start in seen:
@@ -95,6 +93,17 @@ def pick_encounters(cells):
                     seen.add(nb)
                     stack.append(nb)
         clusters.append(sorted(comp))
+    return clusters
+
+
+def pick_encounters(cells):
+    """상하좌우로 붙은 진한 칸 덩어리 = 풀숲 하나 = 포켓몬 한 마리.
+    많으면 큰 풀숲부터 MAX_MONS개. 각 풀숲에서 처음 닿는(가장 왼쪽) 칸에서 조우."""
+    # 가장 진한 칸만으로 풀숲이 MIN_MONS개가 안 되면 한 단계씩 낮춰서 넓힘
+    for lv_min in (4, 3, 2):
+        clusters = find_clusters({cr for cr, v in cells.items() if v >= lv_min})
+        if len(clusters) >= MIN_MONS:
+            break
     if not clusters:
         return []
     latest = max(clusters, key=lambda comp: comp[-1])
