@@ -1,4 +1,4 @@
-name: pokemon contribution graph
+name: minecraft contribution graph
 
 on:
   schedule:
@@ -26,10 +26,7 @@ jobs:
       - name: Generate SVG
         run: |
           mkdir -p dist
-          python generate_poke.py ${{ github.repository_owner }} dist/pokemon-contrib.svg
-          python readme_widgets.py ${{ github.repository_owner }} dist
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          python minecraft/generate_minecraft.py ${{ github.repository_owner }} dist/minecraft-contrib.svg
 
       - name: Push to output branch
         uses: crazy-max/ghaction-github-pages@v4
